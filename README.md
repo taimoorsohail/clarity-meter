@@ -23,7 +23,7 @@ The app is anonymous. It does not ask for names, emails, logins, or any personal
 ## Clone The Repository
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/clarity-meter.git
+git clone https://github.com/taimoorsohail/clarity-meter.git
 cd clarity-meter
 ```
 
