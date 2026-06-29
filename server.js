@@ -25,8 +25,13 @@ app.get("/audience", (_req, res) => {
   res.redirect("/audience.html?session=cosima-workshop");
 });
 
-app.get("/presenter", (_req, res) => {
+app.get("/chair", (_req, res) => {
   res.redirect("/presenter.html?session=cosima-workshop");
+});
+
+app.get("/presenter", (req, res) => {
+  const sessionId = normalizeSessionId(req.query.session);
+  res.redirect(`/presenter.html?session=${encodeURIComponent(sessionId)}&popup=1`);
 });
 
 function normalizeSessionId(rawSessionId) {

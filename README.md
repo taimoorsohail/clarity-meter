@@ -52,9 +52,14 @@ By default the server starts on:
 
 ## Main URLs
 
-Local presenter URL:
+Local chair URL:
 
+- `http://localhost:3000/chair`
 - `http://localhost:3000/presenter.html?session=cosima-workshop`
+
+Local compact presenter URL:
+
+- `http://localhost:3000/presenter`
 
 Local audience URL:
 
@@ -64,7 +69,8 @@ Convenience routes:
 
 - `http://localhost:3000/` redirects to the default audience page for `cosima-workshop`
 - `http://localhost:3000/audience` redirects to the default audience page for `cosima-workshop`
-- `http://localhost:3000/presenter` redirects to the default presenter page for `cosima-workshop`
+- `http://localhost:3000/chair` redirects to the full chair dashboard for `cosima-workshop`
+- `http://localhost:3000/presenter` redirects to the compact presenter popup page for `cosima-workshop`
 
 You can replace `cosima-workshop` with any session name you want, for example:
 
@@ -128,6 +134,7 @@ Recommended fixed public URLs:
 
 - Audience URL: `https://YOUR-RENDER-SERVICE.onrender.com/`
 - Audience URL alias: `https://YOUR-RENDER-SERVICE.onrender.com/audience`
+- Chair URL: `https://YOUR-RENDER-SERVICE.onrender.com/chair`
 - Presenter URL: `https://YOUR-RENDER-SERVICE.onrender.com/presenter`
 
 That means your QR code can stay fixed forever if you keep using the same Render service URL.
@@ -147,7 +154,9 @@ That means your QR code can stay fixed forever if you keep using the same Render
    `https://clarity-meter.onrender.com`
 9. Use that public audience URL as your permanent QR target:
    `https://clarity-meter.onrender.com/`
-10. Keep the presenter link private:
+10. Keep the chair link private:
+   `https://clarity-meter.onrender.com/chair`
+11. Give the presenter the compact bottom-strip version directly:
    `https://clarity-meter.onrender.com/presenter`
 
 #### Talk-Day Render Workflow
