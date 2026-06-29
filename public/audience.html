@@ -68,6 +68,7 @@
 
       const participantId = `${deviceId}:${tabId}`;
       const socket = io();
+      const resetSliderValue = 50;
       let currentCheckpoint = null;
       let noticeTimer = null;
 
@@ -104,6 +105,15 @@
         socket.emit("sliderUpdate", { value });
       }
 
+      function resetSliderToNeutral(message) {
+        slider.value = String(resetSliderValue);
+        updateStatus(resetSliderValue);
+        sendValue();
+        if (message) {
+          showCheckpointNotice(message);
+        }
+      }
+
       function showCheckpointNotice(message) {
         checkpointNotice.textContent = message;
         checkpointNotice.classList.add("visible");
@@ -138,7 +148,11 @@
         if (typeof payload.checkpointNumber === "number") {
           currentCheckpoint = payload.checkpointNumber;
         }
-        showCheckpointNotice("New checkpoint started - adjust your slider if needed.");
+        resetSliderToNeutral("New checkpoint started - slider reset to 50%.");
+      });
+
+      socket.on("sessionReset", () => {
+        resetSliderToNeutral("Meter reset - slider returned to 50%.");
       });
 
       updateStatus(clampValue(slider.value));
