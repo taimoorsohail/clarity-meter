@@ -61,6 +61,8 @@
       <section class="presenter-controls">
         <button id="resetButton" class="action-button" type="button">Reset meter</button>
         <button id="checkpointButton" class="action-button" type="button">New slide / checkpoint</button>
+        <button id="presentationModeButton" class="action-button" type="button">Presentation mode</button>
+        <button id="popupModeButton" class="action-button" type="button">Open popup</button>
       </section>
 
       <section class="history-panel">
@@ -88,16 +90,30 @@
       const timelineStatus = document.getElementById("timelineStatus");
       const resetButton = document.getElementById("resetButton");
       const checkpointButton = document.getElementById("checkpointButton");
+      const presentationModeButton = document.getElementById("presentationModeButton");
+      const popupModeButton = document.getElementById("popupModeButton");
 
       sessionLabel.textContent = sessionId;
 
       const socket = io();
+      const presentationModeKey = "clarity-meter-presentation-mode";
+      const isPopupMode = params.get("popup") === "1";
       let checkpointNumber = 1;
       let latestAverage = null;
       let displayedAverage = null;
       let activeCount = 0;
       let history = [];
       let timeline = [];
+      let presentationMode =
+        window.localStorage.getItem(presentationModeKey) === "true";
+
+      function applyPresentationMode() {
+        document.body.classList.toggle("presentation-mode", presentationMode);
+        document.body.classList.toggle("popup-mode", isPopupMode);
+        presentationModeButton.textContent = presentationMode
+          ? "Exit presentation mode"
+          : "Presentation mode";
+      }
 
       function updateWarnings() {
         if (activeCount === 0) {
@@ -304,7 +320,51 @@
         socket.emit("newCheckpoint");
       });
 
+      presentationModeButton.addEventListener("click", () => {
+        presentationMode = !presentationMode;
+        window.localStorage.setItem(presentationModeKey, String(presentationMode));
+        applyPresentationMode();
+      });
+
+      popupModeButton.addEventListener("click", () => {
+        const popupUrl = new URL(window.location.href);
+        popupUrl.searchParams.set("popup", "1");
+        popupUrl.searchParams.set("session", sessionId);
+
+        const width = 1400;
+        const height = 260;
+        const left = Math.max(0, Math.round((window.screen.width - width) / 2));
+        const top = Math.max(0, window.screen.height - height - 80);
+        const features = [
+          "popup=yes",
+          "toolbar=no",
+          "menubar=no",
+          "location=no",
+          "status=no",
+          "resizable=yes",
+          "scrollbars=no",
+          "width=" + width,
+          "height=" + height,
+          "left=" + left,
+          "top=" + top
+        ].join(",");
+
+        const popupWindow = window.open(
+          popupUrl.toString(),
+          "clarity-meter-presentation-popup",
+          features
+        );
+
+        if (popupWindow) {
+          popupWindow.focus();
+        }
+      });
+
       window.setInterval(animateDisplay, 120);
+      if (isPopupMode) {
+        presentationMode = true;
+      }
+      applyPresentationMode();
       renderDisplay();
       renderHistory();
       renderTimeline();

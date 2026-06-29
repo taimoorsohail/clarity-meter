@@ -126,6 +126,21 @@
 
       slider.addEventListener("input", () => {
         updateStatus(clampValue(slider.value));
+      });
+
+      slider.addEventListener("change", () => {
+        sendValue();
+      });
+
+      slider.addEventListener("pointerup", () => {
+        sendValue();
+      });
+
+      slider.addEventListener("touchend", () => {
+        sendValue();
+      });
+
+      slider.addEventListener("mouseup", () => {
         sendValue();
       });
 
