@@ -38,6 +38,24 @@
             <span>I'm with you</span>
           </div>
         </div>
+
+        <div class="timeline-panel">
+          <div class="timeline-meta">
+            <span>Last 2 minutes</span>
+            <span id="timelineStatus">Waiting for responses</span>
+          </div>
+          <svg
+            id="timelineSvg"
+            class="timeline-svg"
+            viewBox="0 0 720 120"
+            preserveAspectRatio="none"
+            aria-label="Last 2 minutes of clarity history"
+          ></svg>
+          <div class="timeline-axis">
+            <span>2 min ago</span>
+            <span>Now</span>
+          </div>
+        </div>
       </section>
 
       <section class="presenter-controls">
@@ -66,6 +84,8 @@
       const wormDot = document.getElementById("wormDot");
       const wormFill = document.getElementById("wormFill");
       const historyList = document.getElementById("historyList");
+      const timelineSvg = document.getElementById("timelineSvg");
+      const timelineStatus = document.getElementById("timelineStatus");
       const resetButton = document.getElementById("resetButton");
       const checkpointButton = document.getElementById("checkpointButton");
 
@@ -77,6 +97,7 @@
       let displayedAverage = null;
       let activeCount = 0;
       let history = [];
+      let timeline = [];
 
       function updateWarnings() {
         if (activeCount === 0) {
@@ -113,6 +134,90 @@
             );
           })
           .join("");
+      }
+
+      function renderTimeline() {
+        const width = 720;
+        const height = 120;
+        const padding = { top: 8, right: 8, bottom: 18, left: 8 };
+        const innerWidth = width - padding.left - padding.right;
+        const innerHeight = height - padding.top - padding.bottom;
+        const fallbackNow = Date.now();
+        const latestTimestamp = timeline.length
+          ? timeline[timeline.length - 1].timestamp
+          : fallbackNow;
+        const startTimestamp = latestTimestamp - 120000;
+        const gridValues = [25, 50, 75];
+
+        const gridMarkup = gridValues
+          .map((value) => {
+            const y = padding.top + ((100 - value) / 100) * innerHeight;
+            return (
+              '<line x1="' + padding.left + '" y1="' + y + '" x2="' + (width - padding.right) +
+              '" y2="' + y + '" class="timeline-grid-line"></line>'
+            );
+          })
+          .join("");
+
+        const visiblePoints = timeline.filter((point) => point.timestamp >= startTimestamp);
+        const segments = [];
+        let currentSegment = [];
+        let latestValidPoint = null;
+
+        function xFor(timestamp) {
+          return padding.left + ((timestamp - startTimestamp) / 120000) * innerWidth;
+        }
+
+        function yFor(average) {
+          return padding.top + ((100 - average) / 100) * innerHeight;
+        }
+
+        for (const point of visiblePoints) {
+          if (point.average === null || point.activeCount === 0) {
+            if (currentSegment.length) {
+              segments.push(currentSegment);
+              currentSegment = [];
+            }
+            continue;
+          }
+
+          const x = xFor(point.timestamp);
+          const y = yFor(point.average);
+          currentSegment.push(x.toFixed(2) + "," + y.toFixed(2));
+          latestValidPoint = { x, y, average: point.average };
+        }
+
+        if (currentSegment.length) {
+          segments.push(currentSegment);
+        }
+
+        const pathMarkup = segments
+          .map((segment) => {
+            if (segment.length === 1) {
+              const [x, y] = segment[0].split(",");
+              return '<circle cx="' + x + '" cy="' + y + '" r="4" class="timeline-point"></circle>';
+            }
+            return '<polyline points="' + segment.join(" ") + '" class="timeline-line"></polyline>';
+          })
+          .join("");
+
+        const markerMarkup = latestValidPoint
+          ? '<circle cx="' + latestValidPoint.x.toFixed(2) + '" cy="' + latestValidPoint.y.toFixed(2) +
+            '" r="5.5" class="timeline-current-point"></circle>'
+          : "";
+
+        timelineSvg.innerHTML =
+          '<rect x="0" y="0" width="' + width + '" height="' + height + '" class="timeline-bg"></rect>' +
+          gridMarkup +
+          pathMarkup +
+          markerMarkup;
+
+        if (!latestValidPoint) {
+          timelineStatus.textContent = "Waiting for responses";
+          return;
+        }
+
+        timelineStatus.textContent = "Latest trend: " + latestValidPoint.average + "%";
       }
 
       function renderDisplay() {
@@ -163,10 +268,12 @@
         activeCount = state.activeCount || 0;
         latestAverage = typeof state.averageRaw === "number" ? state.averageRaw : null;
         history = Array.isArray(state.history) ? state.history : [];
+        timeline = Array.isArray(state.timeline) ? state.timeline : [];
         if (activeCount === 0) {
           displayedAverage = null;
         }
         renderHistory();
+        renderTimeline();
         renderDisplay();
       });
 
@@ -175,6 +282,8 @@
         activeCount = 0;
         latestAverage = null;
         displayedAverage = null;
+        timeline = [];
+        renderTimeline();
         renderDisplay();
       });
 
@@ -182,6 +291,8 @@
         activeCount = 0;
         latestAverage = null;
         displayedAverage = null;
+        timeline = [];
+        renderTimeline();
         renderDisplay();
       });
 
@@ -196,6 +307,7 @@
       window.setInterval(animateDisplay, 120);
       renderDisplay();
       renderHistory();
+      renderTimeline();
     </script>
   </body>
 </html>

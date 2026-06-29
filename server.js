@@ -6,6 +6,7 @@ const { Server } = require("socket.io");
 const PORT = process.env.PORT || 3000;
 const ACTIVE_WINDOW_MS = 15_000;
 const REBROADCAST_MS = 2_000;
+const TIMELINE_WINDOW_MS = 120_000;
 const MAX_HISTORY_ITEMS = 12;
 
 const app = express();
@@ -42,6 +43,7 @@ function createSession() {
     checkpointNumber: 1,
     participants: new Map(),
     history: [],
+    timeline: [],
     current: {
       peakActiveCount: 0,
       averageSum: 0,
@@ -60,6 +62,7 @@ function getSession(sessionId) {
 
 function resetCurrentCheckpoint(session) {
   session.participants.clear();
+  session.timeline = [];
   session.current = {
     peakActiveCount: 0,
     averageSum: 0,
@@ -105,6 +108,32 @@ function calculateAggregate(session, options = {}) {
   };
 }
 
+function pruneTimeline(session, now = Date.now()) {
+  const cutoff = now - TIMELINE_WINDOW_MS;
+  session.timeline = session.timeline.filter((point) => point.timestamp >= cutoff);
+}
+
+function updateTimeline(session, aggregate, now = Date.now()) {
+  pruneTimeline(session, now);
+
+  const bucketTimestamp = now - (now % REBROADCAST_MS);
+  const nextPoint = {
+    timestamp: bucketTimestamp,
+    average: aggregate.average === null ? null : Math.round(aggregate.average),
+    activeCount: aggregate.activeCount
+  };
+
+  const lastPoint = session.timeline[session.timeline.length - 1];
+  if (lastPoint && lastPoint.timestamp === bucketTimestamp) {
+    lastPoint.average = nextPoint.average;
+    lastPoint.activeCount = nextPoint.activeCount;
+    return;
+  }
+
+  session.timeline.push(nextPoint);
+  pruneTimeline(session, now);
+}
+
 function archiveCheckpoint(session, endedAt = Date.now()) {
   const aggregate = calculateAggregate(session, { now: endedAt, trackSample: false });
   const hasData =
@@ -141,7 +170,9 @@ function archiveCheckpoint(session, endedAt = Date.now()) {
 }
 
 function buildSessionState(sessionId, session, options = {}) {
-  const aggregate = calculateAggregate(session, options);
+  const now = options.now ?? Date.now();
+  const aggregate = calculateAggregate(session, { ...options, now });
+  updateTimeline(session, aggregate, now);
   return {
     sessionId,
     checkpointNumber: session.checkpointNumber,
@@ -149,7 +180,8 @@ function buildSessionState(sessionId, session, options = {}) {
     averageRaw: aggregate.average,
     activeCount: aggregate.activeCount,
     peakActiveCount: aggregate.peakActiveCount,
-    history: session.history.slice(-5)
+    history: session.history.slice(-5),
+    timeline: session.timeline.slice()
   };
 }
 
