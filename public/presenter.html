@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clarity Meter Presenter</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="presenter-page">
+    <main class="presenter-shell">
+      <section class="presenter-header">
+        <div>
+          <p class="eyebrow">Live Clarity Pulse</p>
+          <h1>Live Clarity Pulse</h1>
+        </div>
+        <div class="session-meta">
+          <span>Session: <strong id="sessionId">demo</strong></span>
+          <span id="checkpointLabel">Checkpoint 1</span>
+        </div>
+      </section>
+
+      <section class="presenter-metric">
+        <div class="metric-main">
+          <div class="metric-value" id="averageDisplay">--</div>
+          <div class="metric-copy">
+            <p id="activeResponses">Active responses: 0</p>
+            <p id="warningText" class="warning-text"></p>
+          </div>
+        </div>
+
+        <div class="worm-panel">
+          <div class="worm-track">
+            <div id="wormFill" class="worm-fill"></div>
+            <div id="wormDot" class="worm-dot hidden"></div>
+          </div>
+          <div class="worm-labels">
+            <span>I'm lost</span>
+            <span>I'm with you</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="presenter-controls">
+        <button id="resetButton" class="action-button" type="button">Reset meter</button>
+        <button id="checkpointButton" class="action-button" type="button">New slide / checkpoint</button>
+      </section>
+
+      <section class="history-panel">
+        <h2>Recent checkpoints</h2>
+        <div id="historyList" class="history-list">
+          <p class="history-empty">No completed checkpoints yet.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("session") || "demo";
+
+      const sessionLabel = document.getElementById("sessionId");
+      const checkpointLabel = document.getElementById("checkpointLabel");
+      const averageDisplay = document.getElementById("averageDisplay");
+      const activeResponses = document.getElementById("activeResponses");
+      const warningText = document.getElementById("warningText");
+      const wormDot = document.getElementById("wormDot");
+      const wormFill = document.getElementById("wormFill");
+      const historyList = document.getElementById("historyList");
+      const resetButton = document.getElementById("resetButton");
+      const checkpointButton = document.getElementById("checkpointButton");
+
+      sessionLabel.textContent = sessionId;
+
+      const socket = io();
+      let checkpointNumber = 1;
+      let latestAverage = null;
+      let displayedAverage = null;
+      let activeCount = 0;
+      let history = [];
+
+      function updateWarnings() {
+        if (activeCount === 0) {
+          warningText.textContent = "";
+          return;
+        }
+        if (latestAverage !== null && latestAverage < 40) {
+          warningText.textContent = "Audience may be getting lost.";
+          return;
+        }
+        if (activeCount < 5) {
+          warningText.textContent = "Low response count - interpret cautiously.";
+          return;
+        }
+        warningText.textContent = "";
+      }
+
+      function renderHistory() {
+        if (!history.length) {
+          historyList.innerHTML = '<p class="history-empty">No completed checkpoints yet.</p>';
+          return;
+        }
+
+        historyList.innerHTML = history
+          .slice()
+          .reverse()
+          .map((entry) => {
+            return (
+              '<div class="history-item">' +
+              '<strong>Checkpoint ' + entry.checkpointNumber + "</strong>" +
+              "<span>average " + entry.average + "%</span>" +
+              "<span>peak active responses " + entry.peakActiveCount + "</span>" +
+              "</div>"
+            );
+          })
+          .join("");
+      }
+
+      function renderDisplay() {
+        checkpointLabel.textContent = "Checkpoint " + checkpointNumber;
+        activeResponses.textContent = "Active responses: " + activeCount;
+
+        if (activeCount === 0 || displayedAverage === null) {
+          averageDisplay.textContent = "--";
+          wormDot.classList.add("hidden");
+          wormFill.style.width = "0%";
+          updateWarnings();
+          return;
+        }
+
+        const rounded = Math.round(displayedAverage);
+        averageDisplay.textContent = rounded + "%";
+        wormDot.classList.remove("hidden");
+        wormDot.style.left = rounded + "%";
+        wormFill.style.width = rounded + "%";
+        updateWarnings();
+      }
+
+      function animateDisplay() {
+        if (activeCount === 0 || latestAverage === null) {
+          displayedAverage = null;
+          renderDisplay();
+          return;
+        }
+
+        if (displayedAverage === null) {
+          displayedAverage = latestAverage;
+        } else {
+          displayedAverage = 0.8 * displayedAverage + 0.2 * latestAverage;
+        }
+
+        renderDisplay();
+      }
+
+      socket.on("connect", () => {
+        socket.emit("joinSession", {
+          role: "presenter",
+          sessionId
+        });
+      });
+
+      socket.on("sessionState", (state) => {
+        checkpointNumber = state.checkpointNumber || 1;
+        activeCount = state.activeCount || 0;
+        latestAverage = typeof state.averageRaw === "number" ? state.averageRaw : null;
+        history = Array.isArray(state.history) ? state.history : [];
+        if (activeCount === 0) {
+          displayedAverage = null;
+        }
+        renderHistory();
+        renderDisplay();
+      });
+
+      socket.on("checkpointStarted", (payload) => {
+        checkpointNumber = payload.checkpointNumber || checkpointNumber + 1;
+        activeCount = 0;
+        latestAverage = null;
+        displayedAverage = null;
+        renderDisplay();
+      });
+
+      socket.on("sessionReset", () => {
+        activeCount = 0;
+        latestAverage = null;
+        displayedAverage = null;
+        renderDisplay();
+      });
+
+      resetButton.addEventListener("click", () => {
+        socket.emit("resetSession");
+      });
+
+      checkpointButton.addEventListener("click", () => {
+        socket.emit("newCheckpoint");
+      });
+
+      window.setInterval(animateDisplay, 120);
+      renderDisplay();
+      renderHistory();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Clarity Meter Audience</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="audience-page">
+    <main class="audience-shell">
+      <section class="audience-card">
+        <p class="eyebrow">Anonymous live feedback</p>
+        <h1>How clear is this right now?</h1>
+        <p class="session-text">Session: <span id="sessionId">demo</span></p>
+
+        <div class="slider-block">
+          <input
+            id="claritySlider"
+            class="clarity-slider"
+            type="range"
+            min="0"
+            max="100"
+            value="70"
+            step="1"
+            aria-label="How clear is this right now?"
+          />
+          <div class="slider-labels">
+            <span>I'm lost</span>
+            <span>I'm with you</span>
+          </div>
+        </div>
+
+        <p id="statusText" class="status-text">Mostly following</p>
+        <p id="checkpointNotice" class="checkpoint-notice" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("session") || "demo";
+      const sessionLabel = document.getElementById("sessionId");
+      const slider = document.getElementById("claritySlider");
+      const statusText = document.getElementById("statusText");
+      const checkpointNotice = document.getElementById("checkpointNotice");
+
+      sessionLabel.textContent = sessionId;
+
+      const deviceKey = "clarity-meter-device-id";
+      const tabKey = "clarity-meter-tab-id";
+
+      function createUuid() {
+        if (window.crypto && window.crypto.randomUUID) {
+          return window.crypto.randomUUID();
+        }
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+          const random = Math.random() * 16 | 0;
+          const value = char === "x" ? random : (random & 0x3) | 0x8;
+          return value.toString(16);
+        });
+      }
+
+      const deviceId = localStorage.getItem(deviceKey) || createUuid();
+      localStorage.setItem(deviceKey, deviceId);
+
+      const tabId = sessionStorage.getItem(tabKey) || createUuid();
+      sessionStorage.setItem(tabKey, tabId);
+
+      const participantId = `${deviceId}:${tabId}`;
+      const socket = io();
+      let currentCheckpoint = null;
+      let noticeTimer = null;
+
+      function clampValue(value) {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue)) {
+          return 0;
+        }
+        return Math.min(100, Math.max(0, numericValue));
+      }
+
+      function getStatusMessage(value) {
+        if (value <= 19) {
+          return "Completely lost";
+        }
+        if (value <= 39) {
+          return "Struggling";
+        }
+        if (value <= 59) {
+          return "Somewhat following";
+        }
+        if (value <= 79) {
+          return "Mostly following";
+        }
+        return "I'm with you";
+      }
+
+      function updateStatus(value) {
+        statusText.textContent = getStatusMessage(value);
+      }
+
+      function sendValue() {
+        const value = clampValue(slider.value);
+        socket.emit("sliderUpdate", { value });
+      }
+
+      function showCheckpointNotice(message) {
+        checkpointNotice.textContent = message;
+        checkpointNotice.classList.add("visible");
+        window.clearTimeout(noticeTimer);
+        noticeTimer = window.setTimeout(() => {
+          checkpointNotice.classList.remove("visible");
+          checkpointNotice.textContent = "";
+        }, 5000);
+      }
+
+      slider.addEventListener("input", () => {
+        updateStatus(clampValue(slider.value));
+        sendValue();
+      });
+
+      socket.on("connect", () => {
+        socket.emit("joinSession", {
+          role: "audience",
+          sessionId,
+          participantId
+        });
+        sendValue();
+      });
+
+      socket.on("sessionState", (state) => {
+        if (typeof state.checkpointNumber === "number" && currentCheckpoint === null) {
+          currentCheckpoint = state.checkpointNumber;
+        }
+      });
+
+      socket.on("checkpointStarted", (payload) => {
+        if (typeof payload.checkpointNumber === "number") {
+          currentCheckpoint = payload.checkpointNumber;
+        }
+        showCheckpointNotice("New checkpoint started - adjust your slider if needed.");
+      });
+
+      updateStatus(clampValue(slider.value));
+      sendValue();
+      window.setInterval(sendValue, 3000);
+    </script>
+  </body>
+</html>
