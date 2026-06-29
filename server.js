@@ -18,12 +18,20 @@ const sessions = new Map();
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (_req, res) => {
-  res.redirect("/audience.html?session=demo");
+  res.redirect("/audience.html?session=cosima-workshop");
+});
+
+app.get("/audience", (_req, res) => {
+  res.redirect("/audience.html?session=cosima-workshop");
+});
+
+app.get("/presenter", (_req, res) => {
+  res.redirect("/presenter.html?session=cosima-workshop");
 });
 
 function normalizeSessionId(rawSessionId) {
-  const sessionId = String(rawSessionId || "demo").trim();
-  return sessionId || "demo";
+  const sessionId = String(rawSessionId || "cosima-workshop").trim();
+  return sessionId || "cosima-workshop";
 }
 
 function clampValue(value) {

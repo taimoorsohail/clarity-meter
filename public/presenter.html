@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Clarity Meter Presenter</title>
+    <title>Clarity Meter Presenter | COSIMA Workshop</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body class="presenter-page">
@@ -14,7 +14,7 @@
           <h1>Live Clarity Pulse</h1>
         </div>
         <div class="session-meta">
-          <span>Session: <strong id="sessionId">demo</strong></span>
+          <span>Session: <strong id="sessionId">cosima-workshop</strong></span>
           <span id="checkpointLabel">Checkpoint 1</span>
         </div>
       </section>
@@ -74,7 +74,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const params = new URLSearchParams(window.location.search);
-      const sessionId = params.get("session") || "demo";
+      const sessionId = params.get("session") || "cosima-workshop";
 
       const sessionLabel = document.getElementById("sessionId");
       const checkpointLabel = document.getElementById("checkpointLabel");

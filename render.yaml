@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: clarity-meter
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start

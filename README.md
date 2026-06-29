@@ -54,26 +54,32 @@ By default the server starts on:
 
 Local presenter URL:
 
-- `http://localhost:3000/presenter.html?session=demo`
+- `http://localhost:3000/presenter.html?session=cosima-workshop`
 
 Local audience URL:
 
-- `http://localhost:3000/audience.html?session=demo`
+- `http://localhost:3000/audience.html?session=cosima-workshop`
 
-You can replace `demo` with any session name you want, for example:
+Convenience routes:
+
+- `http://localhost:3000/` redirects to the default audience page for `cosima-workshop`
+- `http://localhost:3000/audience` redirects to the default audience page for `cosima-workshop`
+- `http://localhost:3000/presenter` redirects to the default presenter page for `cosima-workshop`
+
+You can replace `cosima-workshop` with any session name you want, for example:
 
 - `http://localhost:3000/presenter.html?session=ocean-talk`
 - `http://localhost:3000/audience.html?session=ocean-talk`
 
-If no session is provided, the app defaults to `demo`.
+If no session is provided, the app defaults to `cosima-workshop`.
 
 ## Quick Local Test
 
 1. Run `npm start`.
 2. Open the presenter page in one browser window:
-   `http://localhost:3000/presenter.html?session=demo`
+   `http://localhost:3000/presenter.html?session=cosima-workshop`
 3. Open the audience page in another browser window:
-   `http://localhost:3000/audience.html?session=demo`
+   `http://localhost:3000/audience.html?session=cosima-workshop`
 4. Move the audience slider.
 5. Confirm the presenter page updates the average automatically.
 6. Open extra audience tabs to confirm multiple responses contribute to the average.
@@ -114,9 +120,44 @@ Example presenter URL on the laptop:
 
 - `http://192.168.1.25:3000/presenter.html?session=my-talk`
 
-### Option 3: Host It Publicly
+### Option 3: Host It Publicly On Render Free
 
-If you need attendees outside your local network to join, host the app on a public server or platform that can run a Node.js process with WebSocket support. Then use the same audience and presenter paths with a public hostname.
+If you want a fixed audience URL and a permanent QR code, Render free is a good fit for this app as long as the service is actively in use during the talk.
+
+Recommended fixed public URLs:
+
+- Audience URL: `https://YOUR-RENDER-SERVICE.onrender.com/`
+- Audience URL alias: `https://YOUR-RENDER-SERVICE.onrender.com/audience`
+- Presenter URL: `https://YOUR-RENDER-SERVICE.onrender.com/presenter`
+
+That means your QR code can stay fixed forever if you keep using the same Render service URL.
+
+#### Deploy To Render
+
+1. Push this repo to GitHub.
+2. Sign in to Render.
+3. Create a new `Web Service`.
+4. Connect the GitHub repo `clarity-meter`.
+5. Render should detect the included [render.yaml](/Users/tsohail/clarity-meter/render.yaml), but if you configure manually use:
+   Build command: `npm install`
+   Start command: `npm start`
+6. Keep the plan on `Free`.
+7. Deploy the service.
+8. After deployment, copy your Render URL, for example:
+   `https://clarity-meter.onrender.com`
+9. Use that public audience URL as your permanent QR target:
+   `https://clarity-meter.onrender.com/`
+10. Keep the presenter link private:
+   `https://clarity-meter.onrender.com/presenter`
+
+#### Talk-Day Render Workflow
+
+1. Open the presenter link a minute before the session starts.
+2. Confirm the presenter page is live.
+3. Show the permanent QR code pointing to `/`.
+4. Let audience members join from their phones.
+5. Because the app is actively exchanging live traffic during the talk, the free service should stay awake while the session is in progress.
+6. Use `Reset meter` and `New slide / checkpoint` as usual.
 
 ## Finding Your Laptop's Local IP Address
 
@@ -141,6 +182,8 @@ Then build the audience URL like this:
 7. Use `New slide / checkpoint` at major transitions so you can read each section separately.
 8. Use `Reset meter` if you want to clear the current responses and wait for fresh input.
 
+If you are using Render instead of a local laptop-hosted instance, the same workflow applies with your Render URLs instead of `localhost`.
+
 ## Audience Behavior
 
 - The audience page sends its slider value immediately on load.
@@ -156,11 +199,13 @@ Then build the audience URL like this:
 - All state is stored only in memory.
 - Checkpoint history disappears when the server restarts.
 - Presenter-side controls are not strong security. This app is intended for local talks, seminars, classes, and small events where only the presenter receives the presenter URL.
+- If you host this publicly on Render, the audience URL can be fixed and permanent, but the presenter URL is still guessable unless you add authentication.
 
 ## Project Structure
 
 - `package.json`
 - `server.js`
+- `render.yaml`
 - `public/audience.html`
 - `public/presenter.html`
 - `public/style.css`

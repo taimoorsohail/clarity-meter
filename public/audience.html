@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Clarity Meter Audience</title>
+    <title>Clarity Meter Audience | COSIMA Workshop</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body class="audience-page">
@@ -11,7 +11,7 @@
       <section class="audience-card">
         <p class="eyebrow">Anonymous live feedback</p>
         <h1>How clear is this right now?</h1>
-        <p class="session-text">Session: <span id="sessionId">demo</span></p>
+        <p class="session-text">Session: <span id="sessionId">cosima-workshop</span></p>
 
         <div class="slider-block">
           <input
@@ -38,7 +38,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const params = new URLSearchParams(window.location.search);
-      const sessionId = params.get("session") || "demo";
+      const sessionId = params.get("session") || "cosima-workshop";
       const sessionLabel = document.getElementById("sessionId");
       const slider = document.getElementById("claritySlider");
       const statusText = document.getElementById("statusText");
