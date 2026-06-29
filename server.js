@@ -81,7 +81,16 @@ function resetCurrentCheckpoint(session) {
 
 function pruneInactiveParticipants(session, now = Date.now()) {
   for (const [participantId, participant] of session.participants.entries()) {
-    if (now - participant.updatedAt > ACTIVE_WINDOW_MS) {
+    if (participant.socketId) {
+      continue;
+    }
+
+    if (participant.disconnectedAt && now - participant.disconnectedAt > ACTIVE_WINDOW_MS) {
+      session.participants.delete(participantId);
+      continue;
+    }
+
+    if (!participant.disconnectedAt && now - participant.updatedAt > ACTIVE_WINDOW_MS) {
       session.participants.delete(participantId);
     }
   }
@@ -218,6 +227,14 @@ io.on("connection", (socket) => {
     };
 
     const session = getSession(sessionId);
+    if (role === "audience" && session.participants.has(participantId)) {
+      const participant = session.participants.get(participantId);
+      session.participants.set(participantId, {
+        ...participant,
+        socketId: socket.id,
+        disconnectedAt: null
+      });
+    }
     socket.emit("sessionState", buildSessionState(sessionId, session));
   });
 
@@ -229,7 +246,9 @@ io.on("connection", (socket) => {
     const session = getSession(socket.data.sessionId);
     session.participants.set(socket.data.participantId, {
       value: clampValue(payload.value),
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
+      socketId: socket.id,
+      disconnectedAt: null
     });
 
     emitSessionState(socket.data.sessionId, { trackSample: true });
@@ -264,6 +283,28 @@ io.on("connection", (socket) => {
       checkpointNumber: session.checkpointNumber
     });
     emitSessionState(socket.data.sessionId);
+  });
+
+  socket.on("disconnect", () => {
+    if (socket.data.role !== "audience" || !socket.data.sessionId || !socket.data.participantId) {
+      return;
+    }
+
+    const session = sessions.get(socket.data.sessionId);
+    if (!session) {
+      return;
+    }
+
+    const participant = session.participants.get(socket.data.participantId);
+    if (!participant || participant.socketId !== socket.id) {
+      return;
+    }
+
+    session.participants.set(socket.data.participantId, {
+      ...participant,
+      socketId: null,
+      disconnectedAt: Date.now()
+    });
   });
 });
 
